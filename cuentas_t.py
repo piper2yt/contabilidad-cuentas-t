@@ -408,18 +408,22 @@ with st.sidebar:
         cuentas_disponibles = get_cuentas_list()
         cuenta_sel = st.selectbox("Cuenta", cuentas_disponibles)
         tipo_sel = st.selectbox("Tipo de Movimiento", MOVIMIENTOS)
-        monto_sel = st.number_input("Monto ($)", min_value=0.01, step=0.01, format="%.2f")
+        monto_sel = st.text_input("Monto ($)", placeholder="Ej: 1500 o 1500.50")
         fecha_sel = st.date_input("Fecha", value=date.today())
         desc_sel = st.text_input("Descripción (opcional)")
         submitted = st.form_submit_button("➕ Registrar Movimiento", use_container_width=True)
 
     if submitted:
-        if monto_sel > 0:
-            save_to_excel(fecha_sel, cuenta_sel, tipo_sel, monto_sel, desc_sel)
-            st.success(f"✓ {tipo_sel} de ${monto_sel:,.2f} en {cuenta_sel}")
+        try:
+            monto_val = float(str(monto_sel).replace(",", ".").strip())
+        except (ValueError, TypeError):
+            monto_val = 0
+        if monto_val > 0:
+            save_to_excel(fecha_sel, cuenta_sel, tipo_sel, monto_val, desc_sel)
+            st.success(f"✓ {tipo_sel} de ${monto_val:,.2f} en {cuenta_sel}")
             st.rerun()
         else:
-            st.error("El monto debe ser mayor a 0")
+            st.error("Ingresa un monto válido mayor a 0 (ej: 1500 o 1500.50)")
 
     st.divider()
     st.markdown("### Agregar Cuenta")
@@ -587,6 +591,231 @@ with tab1:
             yaxis=dict(gridcolor="#2e3347"),
         )
         st.plotly_chart(fig_bar, use_container_width=True)
+
+    # ── SECCIÓN EDUCATIVA ──────────────────────────────────────────────
+    st.markdown("---")
+    st.markdown("## 📚 Guía de Conceptos Contables")
+    st.markdown('<div style="font-size:0.8rem;color:#6b7280;margin-bottom:1.5rem;">Referencia rápida para entender los elementos del sistema contable</div>', unsafe_allow_html=True)
+
+    # Tarjetas de los 5 tipos de cuenta
+    st.markdown("### 🗂 Tipos de Cuenta")
+    info_cuentas = [
+        {
+            "nombre": "ACTIVOS",
+            "icono": "🏦",
+            "color_borde": "#93c5fd",
+            "color_icon_bg": "#1e3a5f",
+            "definicion": "Todo lo que la empresa <b>posee o tiene derecho a recibir</b>. Son los recursos económicos con los que cuenta el negocio.",
+            "ejemplos": "Efectivo · Cuentas por cobrar · Inventario · Equipo · Edificios · Vehículos",
+            "naturaleza": "deudora",
+            "regla": "Aumentan con CARGOS · Disminuyen con ABONOS",
+        },
+        {
+            "nombre": "PASIVOS",
+            "icono": "📋",
+            "color_borde": "#f87171",
+            "color_icon_bg": "#3b1c1c",
+            "definicion": "Todo lo que la empresa <b>debe a terceros</b>. Son las obligaciones o deudas con acreedores externos.",
+            "ejemplos": "Préstamos bancarios · Cuentas por pagar · Impuestos por pagar · Hipotecas",
+            "naturaleza": "acreedora",
+            "regla": "Aumentan con ABONOS · Disminuyen con CARGOS",
+        },
+        {
+            "nombre": "CAPITAL",
+            "icono": "💼",
+            "color_borde": "#34d399",
+            "color_icon_bg": "#1a3b2e",
+            "definicion": "La <b>inversión de los dueños</b> en la empresa. Es la diferencia entre Activos y Pasivos (patrimonio neto).",
+            "ejemplos": "Aportaciones del dueño · Utilidades retenidas · Reservas · Capital social",
+            "naturaleza": "acreedora",
+            "regla": "Aumentan con ABONOS · Disminuyen con CARGOS",
+        },
+        {
+            "nombre": "INGRESOS",
+            "icono": "📈",
+            "color_borde": "#fbbf24",
+            "color_icon_bg": "#3b2e0a",
+            "definicion": "Dinero que la empresa <b>gana por sus operaciones</b>. Incrementan el capital del negocio.",
+            "ejemplos": "Ventas · Servicios prestados · Intereses ganados · Comisiones · Rentas cobradas",
+            "naturaleza": "acreedora",
+            "regla": "Aumentan con ABONOS · Disminuyen con CARGOS",
+        },
+        {
+            "nombre": "GASTOS",
+            "icono": "📉",
+            "color_borde": "#c084fc",
+            "color_icon_bg": "#2e1a47",
+            "definicion": "Dinero que la empresa <b>gasta para operar</b>. Reducen el capital al consumir recursos.",
+            "ejemplos": "Sueldos · Renta · Servicios · Publicidad · Papelería · Depreciación",
+            "naturaleza": "deudora",
+            "regla": "Aumentan con CARGOS · Disminuyen con ABONOS",
+        },
+    ]
+
+    col_a, col_b, col_c = st.columns(3)
+    col_d, col_e, _ = st.columns(3)
+    columnas_edu = [col_a, col_b, col_c, col_d, col_e]
+
+    for col, info in zip(columnas_edu, info_cuentas):
+        nat_color = "#93c5fd" if info["naturaleza"] == "deudora" else "#34d399"
+        nat_bg    = "#1e3a5f" if info["naturaleza"] == "deudora" else "#1a3b2e"
+        nat_label = "Nat. Deudora" if info["naturaleza"] == "deudora" else "Nat. Acreedora"
+        with col:
+            st.markdown(f"""
+            <div style="
+                background: linear-gradient(160deg, #1a1e2e, #1f2438);
+                border: 1px solid {info['color_borde']}44;
+                border-top: 3px solid {info['color_borde']};
+                border-radius: 12px;
+                padding: 1.2rem;
+                margin-bottom: 1rem;
+                height: 100%;
+            ">
+                <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.8rem;">
+                    <div style="background:{info['color_icon_bg']};border-radius:8px;padding:0.4rem 0.6rem;font-size:1.3rem;">
+                        {info['icono']}
+                    </div>
+                    <div>
+                        <div style="font-size:0.65rem;letter-spacing:0.12em;color:#6b7280;">CUENTA</div>
+                        <div style="font-family:'DM Serif Display',serif;font-size:1rem;color:{info['color_borde']};">{info['nombre']}</div>
+                    </div>
+                </div>
+                <p style="font-size:0.82rem;color:#d1d5db;line-height:1.5;margin-bottom:0.8rem;">
+                    {info['definicion']}
+                </p>
+                <div style="background:#0f1117;border-radius:6px;padding:0.5rem 0.7rem;margin-bottom:0.7rem;">
+                    <div style="font-size:0.65rem;color:#6b7280;letter-spacing:0.1em;margin-bottom:0.3rem;">EJEMPLOS</div>
+                    <div style="font-size:0.75rem;color:#9ca3af;">{info['ejemplos']}</div>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span style="background:{nat_bg};color:{nat_color};font-size:0.65rem;font-weight:700;
+                        letter-spacing:0.08em;padding:2px 8px;border-radius:20px;border:1px solid {nat_color}44;">
+                        {nat_label}
+                    </span>
+                    <span style="font-size:0.68rem;color:#6b7280;">{info['regla']}</span>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+    # Naturalezas: Deudora vs Acreedora
+    st.markdown("### ⚖️ Naturaleza de las Cuentas")
+    col_deu, col_acre = st.columns(2)
+
+    with col_deu:
+        st.markdown("""
+        <div style="
+            background: linear-gradient(135deg, #1e3a5f22, #1f2438);
+            border: 1px solid #93c5fd44;
+            border-left: 4px solid #93c5fd;
+            border-radius: 10px;
+            padding: 1.2rem 1.4rem;
+        ">
+            <div style="font-family:'DM Serif Display',serif;font-size:1.1rem;color:#93c5fd;margin-bottom:0.6rem;">
+                📘 Naturaleza Deudora
+            </div>
+            <p style="font-size:0.83rem;color:#d1d5db;line-height:1.6;margin-bottom:0.8rem;">
+                Las cuentas de naturaleza deudora <b>aumentan su saldo cuando se cargan (lado izquierdo de la T)</b>
+                y disminuyen cuando se abonan.
+            </p>
+            <div style="background:#0f1117;border-radius:8px;padding:0.8rem;margin-bottom:0.6rem;">
+                <div style="font-size:0.7rem;color:#6b7280;margin-bottom:0.4rem;letter-spacing:0.1em;">CUENTAS CON ESTA NATURALEZA</div>
+                <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+                    <span style="background:#1e3a5f;color:#93c5fd;padding:3px 10px;border-radius:20px;font-size:0.75rem;">🏦 Activos</span>
+                    <span style="background:#2e1a47;color:#c084fc;padding:3px 10px;border-radius:20px;font-size:0.75rem;">📉 Gastos</span>
+                </div>
+            </div>
+            <div style="font-size:0.78rem;color:#9ca3af;line-height:1.5;">
+                💡 <i>Su saldo normal es <b style="color:#93c5fd;">positivo</b> en el lado del Cargo (izquierdo).</i>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col_acre:
+        st.markdown("""
+        <div style="
+            background: linear-gradient(135deg, #1a3b2e22, #1f2438);
+            border: 1px solid #34d39944;
+            border-left: 4px solid #34d399;
+            border-radius: 10px;
+            padding: 1.2rem 1.4rem;
+        ">
+            <div style="font-family:'DM Serif Display',serif;font-size:1.1rem;color:#34d399;margin-bottom:0.6rem;">
+                📗 Naturaleza Acreedora
+            </div>
+            <p style="font-size:0.83rem;color:#d1d5db;line-height:1.6;margin-bottom:0.8rem;">
+                Las cuentas de naturaleza acreedora <b>aumentan su saldo cuando se abonan (lado derecho de la T)</b>
+                y disminuyen cuando se cargan.
+            </p>
+            <div style="background:#0f1117;border-radius:8px;padding:0.8rem;margin-bottom:0.6rem;">
+                <div style="font-size:0.7rem;color:#6b7280;margin-bottom:0.4rem;letter-spacing:0.1em;">CUENTAS CON ESTA NATURALEZA</div>
+                <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+                    <span style="background:#3b1c1c;color:#f87171;padding:3px 10px;border-radius:20px;font-size:0.75rem;">📋 Pasivos</span>
+                    <span style="background:#1a3b2e;color:#34d399;padding:3px 10px;border-radius:20px;font-size:0.75rem;">💼 Capital</span>
+                    <span style="background:#3b2e0a;color:#fbbf24;padding:3px 10px;border-radius:20px;font-size:0.75rem;">📈 Ingresos</span>
+                </div>
+            </div>
+            <div style="font-size:0.78rem;color:#9ca3af;line-height:1.5;">
+                💡 <i>Su saldo normal es <b style="color:#34d399;">positivo</b> en el lado del Abono (derecho).</i>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    # Diagrama visual de la Cuenta T
+    st.markdown("### 🔠 ¿Cómo funciona la Cuenta T?")
+    st.markdown("""
+    <div style="
+        background: #161922;
+        border: 1px solid #2e3347;
+        border-radius: 12px;
+        padding: 1.4rem;
+    ">
+        <p style="font-size:0.85rem;color:#9ca3af;margin-bottom:1rem;">
+            La <b style="color:#e8e3d5;">Cuenta T</b> es la representación gráfica de una cuenta contable.
+            Su nombre viene de su forma: una línea vertical divide el <b style="color:#f87171;">Cargo (izquierda)</b>
+            del <b style="color:#34d399;">Abono (derecha)</b>.
+        </p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;max-width:480px;margin:0 auto;
+            border:1px solid #2e3347;border-radius:8px;overflow:hidden;">
+            <div style="background:#1e3a5f;padding:0.5rem;text-align:center;
+                font-family:'DM Serif Display',serif;font-size:1rem;color:#93c5fd;
+                border-bottom:2px solid #93c5fd;grid-column:1/-1;">
+                Nombre de la Cuenta
+            </div>
+            <div style="padding:0.8rem;border-right:2px solid #2e3347;">
+                <div style="color:#f87171;font-size:0.7rem;letter-spacing:0.1em;font-weight:700;margin-bottom:0.5rem;">
+                    DEBE / CARGO
+                </div>
+                <div style="color:#9ca3af;font-size:0.78rem;line-height:1.6;">
+                    · Aumenta Activos<br>
+                    · Aumenta Gastos<br>
+                    · Disminuye Pasivos<br>
+                    · Disminuye Capital<br>
+                    · Disminuye Ingresos
+                </div>
+            </div>
+            <div style="padding:0.8rem;">
+                <div style="color:#34d399;font-size:0.7rem;letter-spacing:0.1em;font-weight:700;margin-bottom:0.5rem;">
+                    HABER / ABONO
+                </div>
+                <div style="color:#9ca3af;font-size:0.78rem;line-height:1.6;">
+                    · Disminuye Activos<br>
+                    · Disminuye Gastos<br>
+                    · Aumenta Pasivos<br>
+                    · Aumenta Capital<br>
+                    · Aumenta Ingresos
+                </div>
+            </div>
+        </div>
+        <div style="margin-top:1rem;background:#0f1117;border-radius:8px;padding:0.8rem 1rem;
+            border-left:3px solid #fbbf24;">
+            <span style="color:#fbbf24;font-weight:700;font-size:0.8rem;">📌 Regla de oro: </span>
+            <span style="color:#9ca3af;font-size:0.82rem;">
+                En toda transacción el total de Cargos siempre debe ser igual al total de Abonos.
+                Esto garantiza que la ecuación contable <b style="color:#e8e3d5;">Activo = Pasivo + Capital</b> siempre esté en equilibrio.
+            </span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
 
 # ══════════════════════════════════════════════════════════════════════
