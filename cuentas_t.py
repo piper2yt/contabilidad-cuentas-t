@@ -427,20 +427,109 @@ with st.sidebar:
 
     st.divider()
     st.markdown("### Agregar Cuenta")
-    with st.form("form_cuenta"):
-        nueva_cuenta = st.text_input("Nombre de la cuenta")
-        nat_nueva = st.selectbox("Naturaleza", ["deudora", "acreedora"])
-        add_cuenta = st.form_submit_button("➕ Agregar Cuenta", use_container_width=True)
 
-    if add_cuenta and nueva_cuenta.strip():
-        nombre = nueva_cuenta.strip().capitalize()
-        if nombre not in get_cuentas_list():
-            st.session_state.cuentas_custom.append(nombre)
-            NATURALEZA[nombre] = nat_nueva
-            st.success(f"Cuenta '{nombre}' añadida")
+    # Catálogo de cuentas comunes con su naturaleza predefinida
+    CATALOGO = {
+        # ── ACTIVOS (deudora) ──
+        "Caja": "deudora",
+        "Bancos": "deudora",
+        "Cuentas por cobrar": "deudora",
+        "Inventario": "deudora",
+        "Mercancías": "deudora",
+        "Terrenos": "deudora",
+        "Edificios": "deudora",
+        "Equipo de cómputo": "deudora",
+        "Equipo de transporte": "deudora",
+        "Maquinaria": "deudora",
+        "Mobiliario y equipo": "deudora",
+        "Documentos por cobrar": "deudora",
+        "IVA acreditable": "deudora",
+        "Papelería y útiles": "deudora",
+        "Seguros pagados por anticipado": "deudora",
+        "Rentas pagadas por anticipado": "deudora",
+        # ── PASIVOS (acreedora) ──
+        "Cuentas por pagar": "acreedora",
+        "Documentos por pagar": "acreedora",
+        "Préstamos bancarios": "acreedora",
+        "Acreedores diversos": "acreedora",
+        "IVA por pagar": "acreedora",
+        "ISR por pagar": "acreedora",
+        "Sueldos por pagar": "acreedora",
+        "Hipotecas por pagar": "acreedora",
+        "Intereses por pagar": "acreedora",
+        # ── CAPITAL (acreedora) ──
+        "Capital social": "acreedora",
+        "Utilidad del ejercicio": "acreedora",
+        "Pérdida del ejercicio": "deudora",
+        "Reserva legal": "acreedora",
+        "Dividendos": "deudora",
+        # ── INGRESOS (acreedora) ──
+        "Ventas": "acreedora",
+        "Servicios prestados": "acreedora",
+        "Intereses ganados": "acreedora",
+        "Comisiones ganadas": "acreedora",
+        "Descuentos sobre compras": "acreedora",
+        "Devoluciones sobre ventas": "deudora",
+        # ── GASTOS (deudora) ──
+        "Sueldos y salarios": "deudora",
+        "Renta": "deudora",
+        "Luz y agua": "deudora",
+        "Teléfono e internet": "deudora",
+        "Publicidad": "deudora",
+        "Compras": "deudora",
+        "Fletes sobre compras": "deudora",
+        "Descuentos sobre ventas": "deudora",
+        "Devoluciones sobre compras": "acreedora",
+        "Depreciación": "deudora",
+        "Intereses pagados": "deudora",
+        "Mantenimiento": "deudora",
+        "Seguros": "deudora",
+        "Papelería": "deudora",
+        "Combustibles": "deudora",
+    }
+
+    # Filtrar las que ya están agregadas
+    ya_agregadas = set(get_cuentas_list())
+    catalogo_disponible = {k: v for k, v in CATALOGO.items() if k not in ya_agregadas}
+
+    # Selectbox del catálogo + opción personalizada
+    opciones_catalogo = ["— Selecciona una cuenta —"] + sorted(catalogo_disponible.keys()) + ["✏️ Escribir nombre personalizado"]
+    cuenta_elegida = st.selectbox("Cuenta a agregar", opciones_catalogo, key="sel_nueva_cuenta")
+
+    if cuenta_elegida == "✏️ Escribir nombre personalizado":
+        nombre_custom = st.text_input("Nombre personalizado", placeholder="Ej: Inversiones temporales")
+        nat_custom = st.selectbox("Naturaleza", ["deudora", "acreedora"], key="nat_custom")
+        if st.button("➕ Agregar Cuenta", use_container_width=True, key="btn_add_custom"):
+            nombre = nombre_custom.strip().capitalize()
+            if nombre and nombre not in get_cuentas_list():
+                st.session_state.cuentas_custom.append(nombre)
+                NATURALEZA[nombre] = nat_custom
+                st.success(f"✓ '{nombre}' añadida como cuenta {nat_custom}")
+                st.rerun()
+            elif not nombre:
+                st.error("Escribe un nombre válido")
+            else:
+                st.warning("Esa cuenta ya existe")
+
+    elif cuenta_elegida != "— Selecciona una cuenta —":
+        nat_det = CATALOGO[cuenta_elegida]
+        nat_color = "#93c5fd" if nat_det == "deudora" else "#34d399"
+        nat_icon  = "📘" if nat_det == "deudora" else "📗"
+        st.markdown(f"""
+        <div style="background:#1f2438;border:1px solid {nat_color}44;border-left:3px solid {nat_color};
+            border-radius:8px;padding:0.7rem 1rem;margin:0.4rem 0 0.6rem;">
+            <div style="font-size:0.7rem;color:#6b7280;letter-spacing:0.1em;margin-bottom:0.2rem;">NATURALEZA DETECTADA</div>
+            <div style="color:{nat_color};font-weight:700;font-size:0.9rem;">{nat_icon} {nat_det.upper()}</div>
+            <div style="font-size:0.72rem;color:#9ca3af;margin-top:0.2rem;">
+                {"Aumenta con Cargos · Disminuye con Abonos" if nat_det == "deudora" else "Aumenta con Abonos · Disminuye con Cargos"}
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        if st.button(f"➕ Agregar '{cuenta_elegida}'", use_container_width=True, key="btn_add_catalogo"):
+            st.session_state.cuentas_custom.append(cuenta_elegida)
+            NATURALEZA[cuenta_elegida] = nat_det
+            st.success(f"✓ '{cuenta_elegida}' añadida ({nat_det})")
             st.rerun()
-        else:
-            st.warning("La cuenta ya existe")
 
     if st.session_state.get("cuentas_custom"):
         st.markdown("**Cuentas personalizadas:**")
@@ -1053,4 +1142,3 @@ with tab4:
                 mime="text/csv",
                 use_container_width=True,
             )
-
