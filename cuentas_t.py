@@ -260,6 +260,97 @@ def calcular_totales(df, cuenta):
     return cargos, abonos
 
 
+def reset_todo():
+    """Borra todos los movimientos y cuentas personalizadas."""
+    init_excel()
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Movimientos"
+    headers = ["Fecha", "Cuenta", "Tipo", "Monto", "Mes", "Año", "Descripcion"]
+    bold = Font(bold=True, color="FFFFFF")
+    fill = PatternFill("solid", start_color="1E3A5F")
+    for col, h in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=h)
+        cell.font = bold
+        cell.fill = fill
+        cell.alignment = Alignment(horizontal="center")
+    widths = [14, 14, 10, 12, 8, 8, 30]
+    for i, w in enumerate(widths, 1):
+        ws.column_dimensions[get_column_letter(i)].width = w
+    wb.save(EXCEL_FILE)
+    st.session_state.cuentas_custom = []
+    # Limpiar naturalezas personalizadas
+    for k in list(NATURALEZA.keys()):
+        if k not in ["Activos", "Pasivos", "Capital", "Ingresos", "Gastos"]:
+            del NATURALEZA[k]
+
+
+def eliminar_ultimo():
+    """Elimina el último movimiento registrado."""
+    df = load_data()
+    if df.empty:
+        return False
+    df = df.iloc[:-1]
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Movimientos"
+    headers = ["Fecha", "Cuenta", "Tipo", "Monto", "Mes", "Año", "Descripcion"]
+    bold = Font(bold=True, color="FFFFFF")
+    fill = PatternFill("solid", start_color="1E3A5F")
+    for col, h in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=h)
+        cell.font = bold
+        cell.fill = fill
+        cell.alignment = Alignment(horizontal="center")
+    widths = [14, 14, 10, 12, 8, 8, 30]
+    for i, w in enumerate(widths, 1):
+        ws.column_dimensions[get_column_letter(i)].width = w
+    thin = Border(bottom=Side(style="thin", color="2E3347"))
+    for _, row in df.iterrows():
+        dt = pd.to_datetime(row["Fecha"])
+        row_data = [dt.strftime("%Y-%m-%d"), row["Cuenta"], row["Tipo"],
+                    row["Monto"], row["Mes"], row["Año"], row.get("Descripcion","")]
+        next_row = ws.max_row + 1
+        for col, val in enumerate(row_data, 1):
+            cell = ws.cell(row=next_row, column=col, value=val)
+            cell.border = thin
+    wb.save(EXCEL_FILE)
+    return True
+
+
+def eliminar_por_indice(idx):
+    """Elimina el movimiento en la posición idx (0-based del df original)."""
+    df = load_data()
+    if df.empty or idx >= len(df):
+        return False
+    df = df.drop(df.index[idx]).reset_index(drop=True)
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Movimientos"
+    headers = ["Fecha", "Cuenta", "Tipo", "Monto", "Mes", "Año", "Descripcion"]
+    bold = Font(bold=True, color="FFFFFF")
+    fill = PatternFill("solid", start_color="1E3A5F")
+    for col, h in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=h)
+        cell.font = bold
+        cell.fill = fill
+        cell.alignment = Alignment(horizontal="center")
+    widths = [14, 14, 10, 12, 8, 8, 30]
+    for i, w in enumerate(widths, 1):
+        ws.column_dimensions[get_column_letter(i)].width = w
+    thin = Border(bottom=Side(style="thin", color="2E3347"))
+    for _, row in df.iterrows():
+        dt = pd.to_datetime(row["Fecha"])
+        row_data = [dt.strftime("%Y-%m-%d"), row["Cuenta"], row["Tipo"],
+                    row["Monto"], row["Mes"], row["Año"], row.get("Descripcion","")]
+        next_row = ws.max_row + 1
+        for col, val in enumerate(row_data, 1):
+            cell = ws.cell(row=next_row, column=col, value=val)
+            cell.border = thin
+    wb.save(EXCEL_FILE)
+    return True
+
+
 # ─── COMPONENTS ───────────────────────────────────────────────────────────────
 def render_cuenta_t(cuenta, df):
     cargos_val, abonos_val = calcular_totales(df, cuenta)
@@ -349,8 +440,58 @@ with st.sidebar:
 
     if st.session_state.get("cuentas_custom"):
         st.markdown("**Cuentas personalizadas:**")
-        for c in st.session_state.cuentas_custom:
-            st.markdown(f"· {c} ({NATURALEZA.get(c,'—')})")
+        for i, c in enumerate(st.session_state.cuentas_custom):
+            col_c, col_x = st.columns([3, 1])
+            with col_c:
+                st.markdown(f"· {c} ({NATURALEZA.get(c,'—')})")
+            with col_x:
+                if st.button("✕", key=f"del_cuenta_{i}", help=f"Eliminar {c}"):
+                    st.session_state.cuentas_custom.pop(i)
+                    if c in NATURALEZA:
+                        del NATURALEZA[c]
+                    st.rerun()
+
+    st.divider()
+    st.markdown("### ⚠️ Zona de Reset")
+
+    if st.button("↩ Deshacer último movimiento", use_container_width=True):
+        st.session_state["confirm_undo"] = True
+
+    if st.session_state.get("confirm_undo"):
+        st.warning("¿Eliminar el último movimiento registrado?")
+        col_y, col_n = st.columns(2)
+        with col_y:
+            if st.button("✓ Sí", key="undo_yes", use_container_width=True):
+                ok = eliminar_ultimo()
+                st.session_state["confirm_undo"] = False
+                if ok:
+                    st.success("Último movimiento eliminado")
+                else:
+                    st.info("No hay movimientos para eliminar")
+                st.rerun()
+        with col_n:
+            if st.button("✗ No", key="undo_no", use_container_width=True):
+                st.session_state["confirm_undo"] = False
+                st.rerun()
+
+    st.markdown("")
+
+    if st.button("🗑 Resetear TODO a cero", use_container_width=True):
+        st.session_state["confirm_reset"] = True
+
+    if st.session_state.get("confirm_reset"):
+        st.error("¿Borrar TODOS los movimientos y cuentas personalizadas?")
+        col_y2, col_n2 = st.columns(2)
+        with col_y2:
+            if st.button("✓ Sí, resetear", key="reset_yes", use_container_width=True):
+                reset_todo()
+                st.session_state["confirm_reset"] = False
+                st.success("✓ Todo reseteado a cero")
+                st.rerun()
+        with col_n2:
+            if st.button("✗ Cancelar", key="reset_no", use_container_width=True):
+                st.session_state["confirm_reset"] = False
+                st.rerun()
 
 
 # ─── MAIN ─────────────────────────────────────────────────────────────────────
@@ -639,13 +780,37 @@ with tab4:
                 return "color: #34d399"
             return ""
 
-        st.dataframe(
-            df_hist[["Fecha","Cuenta","Tipo","Monto","Descripcion"]].style
-                .format({"Monto": "${:,.2f}", "Fecha": lambda x: str(x)[:10]})
-                .applymap(color_tipo, subset=["Tipo"]),
-            use_container_width=True,
-            height=400,
-        )
+        # Tabla con botón de eliminar por fila
+        st.markdown("##### Movimientos registrados")
+        col_h = st.columns([2, 2, 2, 2, 3, 1])
+        for h, label in zip(col_h, ["Fecha", "Cuenta", "Tipo", "Monto", "Descripción", "Eliminar"]):
+            h.markdown(f"**{label}**")
+
+        df_hist_indexed = df_hist.reset_index()  # guarda índice original en columna 'index'
+        for _, row in df_hist_indexed.iterrows():
+            c1, c2, c3, c4, c5, c6 = st.columns([2, 2, 2, 2, 3, 1])
+            c1.write(str(row["Fecha"])[:10])
+            c2.write(row["Cuenta"])
+            color = "#f87171" if row["Tipo"] == "CARGOS" else "#34d399"
+            c3.markdown(f'<span style="color:{color};font-weight:600">{row["Tipo"]}</span>', unsafe_allow_html=True)
+            c4.write(f"${row['Monto']:,.2f}")
+            c5.write(row.get("Descripcion", "") or "—")
+            if c6.button("✕", key=f"del_row_{row['index']}"):
+                st.session_state["confirm_del_idx"] = int(row["index"])
+
+        if "confirm_del_idx" in st.session_state and st.session_state["confirm_del_idx"] is not None:
+            idx_to_del = st.session_state["confirm_del_idx"]
+            st.warning(f"¿Eliminar el movimiento seleccionado (fila #{idx_to_del + 1})?")
+            col_cd1, col_cd2, _ = st.columns([1, 1, 4])
+            with col_cd1:
+                if st.button("✓ Confirmar", key="confirm_del_btn"):
+                    eliminar_por_indice(idx_to_del)
+                    st.session_state["confirm_del_idx"] = None
+                    st.rerun()
+            with col_cd2:
+                if st.button("✗ Cancelar", key="cancel_del_btn"):
+                    st.session_state["confirm_del_idx"] = None
+                    st.rerun()
 
         st.markdown(f"**{len(df_hist)} movimientos** · Total cargos: **${df_hist[df_hist['Tipo']=='CARGOS']['Monto'].sum():,.2f}** · Total abonos: **${df_hist[df_hist['Tipo']=='ABONOS']['Monto'].sum():,.2f}**")
 
@@ -659,3 +824,4 @@ with tab4:
                 mime="text/csv",
                 use_container_width=True,
             )
+
