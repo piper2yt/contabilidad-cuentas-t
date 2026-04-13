@@ -179,29 +179,112 @@ div[data-testid="stForm"] {
 
 
 # ─── EXCEL HELPERS ────────────────────────────────────────────────────────────
+SEED_FILE = "movimientos_contables.xlsx"   # archivo de prueba en el repo
+WORK_FILE = "movimientos_trabajo.xlsx"      # archivo de trabajo en tiempo de ejecución
+
+DATOS_SEMILLA = [
+    ("2025-01-03","Activos","CARGOS",50000,1,2025,"Efectivo aportado por el dueño"),
+    ("2025-01-03","Capital","ABONOS",50000,1,2025,"Capital inicial del dueño"),
+    ("2025-01-05","Activos","CARGOS",20000,1,2025,"Préstamo bancario recibido"),
+    ("2025-01-05","Pasivos","ABONOS",20000,1,2025,"Préstamo bancario por pagar"),
+    ("2025-01-07","Gastos", "CARGOS",15000,1,2025,"Compra de inventario inicial"),
+    ("2025-01-07","Activos","ABONOS",15000,1,2025,"Pago inventario en efectivo"),
+    ("2025-01-08","Activos","CARGOS",12000,1,2025,"Equipo de cómputo adquirido"),
+    ("2025-01-08","Activos","ABONOS",12000,1,2025,"Pago equipo en efectivo"),
+    ("2025-01-10","Activos","CARGOS", 8500,1,2025,"Cobro ventas semana 1"),
+    ("2025-01-10","Ingresos","ABONOS",8500,1,2025,"Ventas semana 1 enero"),
+    ("2025-01-17","Activos","CARGOS", 9200,1,2025,"Cobro ventas semana 2"),
+    ("2025-01-17","Ingresos","ABONOS",9200,1,2025,"Ventas semana 2 enero"),
+    ("2025-01-24","Activos","CARGOS", 7800,1,2025,"Cobro ventas semana 3"),
+    ("2025-01-24","Ingresos","ABONOS",7800,1,2025,"Ventas semana 3 enero"),
+    ("2025-01-31","Activos","CARGOS", 6500,1,2025,"Cobro ventas semana 4"),
+    ("2025-01-31","Ingresos","ABONOS",6500,1,2025,"Ventas semana 4 enero"),
+    ("2025-01-31","Gastos", "CARGOS", 5000,1,2025,"Sueldo empleado enero"),
+    ("2025-01-31","Activos","ABONOS", 5000,1,2025,"Pago sueldo enero"),
+    ("2025-01-31","Gastos", "CARGOS", 3500,1,2025,"Renta local enero"),
+    ("2025-01-31","Activos","ABONOS", 3500,1,2025,"Pago renta enero"),
+    ("2025-01-31","Gastos", "CARGOS",  800,1,2025,"Servicios luz y agua enero"),
+    ("2025-01-31","Activos","ABONOS",  800,1,2025,"Pago servicios enero"),
+    ("2025-02-03","Pasivos","CARGOS", 8000,2,2025,"Abono parcial a préstamo bancario"),
+    ("2025-02-03","Activos","ABONOS", 8000,2,2025,"Pago préstamo con efectivo"),
+    ("2025-02-05","Gastos", "CARGOS",12000,2,2025,"Compra de mercancía febrero"),
+    ("2025-02-05","Activos","ABONOS",12000,2,2025,"Pago mercancía en efectivo"),
+    ("2025-02-07","Activos","CARGOS",11000,2,2025,"Cobro ventas semana 1 feb"),
+    ("2025-02-07","Ingresos","ABONOS",11000,2,2025,"Ventas semana 1 febrero"),
+    ("2025-02-14","Activos","CARGOS",13500,2,2025,"Cobro ventas San Valentín"),
+    ("2025-02-14","Ingresos","ABONOS",13500,2,2025,"Ventas San Valentín"),
+    ("2025-02-21","Activos","CARGOS",10200,2,2025,"Cobro ventas semana 3 feb"),
+    ("2025-02-21","Ingresos","ABONOS",10200,2,2025,"Ventas semana 3 febrero"),
+    ("2025-02-28","Activos","CARGOS", 9800,2,2025,"Cobro ventas semana 4 feb"),
+    ("2025-02-28","Ingresos","ABONOS",9800,2,2025,"Ventas semana 4 febrero"),
+    ("2025-02-28","Gastos", "CARGOS", 5000,2,2025,"Sueldo empleado febrero"),
+    ("2025-02-28","Gastos", "CARGOS", 3500,2,2025,"Renta local febrero"),
+    ("2025-02-28","Gastos", "CARGOS",  950,2,2025,"Servicios luz y agua febrero"),
+    ("2025-02-28","Gastos", "CARGOS", 1200,2,2025,"Publicidad redes sociales"),
+    ("2025-02-28","Activos","ABONOS",10650,2,2025,"Pago gastos operativos febrero"),
+    ("2025-03-03","Gastos", "CARGOS",18000,3,2025,"Compra mercancía marzo a crédito"),
+    ("2025-03-03","Pasivos","ABONOS",18000,3,2025,"Deuda por mercancía marzo"),
+    ("2025-03-07","Activos","CARGOS", 9500,3,2025,"Cobro ventas semana 1 mar"),
+    ("2025-03-07","Ingresos","ABONOS",9500,3,2025,"Ventas semana 1 marzo"),
+    ("2025-03-14","Activos","CARGOS",10800,3,2025,"Cobro ventas semana 2 mar"),
+    ("2025-03-14","Ingresos","ABONOS",10800,3,2025,"Ventas semana 2 marzo"),
+    ("2025-03-15","Pasivos","CARGOS",10000,3,2025,"Abono a deuda de mercancía"),
+    ("2025-03-15","Activos","ABONOS",10000,3,2025,"Pago deuda mercancía efectivo"),
+    ("2025-03-21","Activos","CARGOS", 8900,3,2025,"Cobro ventas semana 3 mar"),
+    ("2025-03-21","Ingresos","ABONOS",8900,3,2025,"Ventas semana 3 marzo"),
+    ("2025-03-28","Activos","CARGOS", 7600,3,2025,"Cobro ventas semana 4 mar"),
+    ("2025-03-28","Ingresos","ABONOS",7600,3,2025,"Ventas semana 4 marzo"),
+    ("2025-03-31","Gastos", "CARGOS", 5500,3,2025,"Sueldo empleado marzo"),
+    ("2025-03-31","Gastos", "CARGOS", 3500,3,2025,"Renta local marzo"),
+    ("2025-03-31","Gastos", "CARGOS",  870,3,2025,"Servicios luz y agua marzo"),
+    ("2025-03-31","Gastos", "CARGOS", 1500,3,2025,"Publicidad primavera"),
+    ("2025-03-31","Gastos", "CARGOS",  600,3,2025,"Mantenimiento equipo"),
+    ("2025-03-31","Activos","ABONOS",11970,3,2025,"Pago gastos operativos marzo"),
+]
+
+
+def _crear_workbook_vacio():
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Movimientos"
+    headers = ["Fecha","Cuenta","Tipo","Monto","Mes","Año","Descripcion"]
+    bold = Font(bold=True, color="FFFFFF")
+    fill = PatternFill("solid", start_color="1E3A5F")
+    for col, h in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=h)
+        cell.font = bold
+        cell.fill = fill
+        cell.alignment = Alignment(horizontal="center")
+    widths = [14, 14, 10, 12, 8, 8, 50]
+    for i, w in enumerate(widths, 1):
+        ws.column_dimensions[get_column_letter(i)].width = w
+    return wb
+
+
 def init_excel():
-    if not os.path.exists(EXCEL_FILE):
-        wb = Workbook()
+    """Crea el archivo de trabajo; si no existe, lo inicializa con datos de prueba."""
+    if not os.path.exists(WORK_FILE):
+        wb = _crear_workbook_vacio()
         ws = wb.active
-        ws.title = "Movimientos"
-        headers = ["Fecha", "Cuenta", "Tipo", "Monto", "Mes", "Año", "Descripcion"]
-        bold = Font(bold=True, color="FFFFFF")
-        fill = PatternFill("solid", start_color="1E3A5F")
-        for col, h in enumerate(headers, 1):
-            cell = ws.cell(row=1, column=col, value=h)
-            cell.font = bold
-            cell.fill = fill
-            cell.alignment = Alignment(horizontal="center")
-        widths = [14, 14, 10, 12, 8, 8, 30]
-        for i, w in enumerate(widths, 1):
-            ws.column_dimensions[get_column_letter(i)].width = w
-        wb.save(EXCEL_FILE)
+        thin = Border(bottom=Side(style="thin", color="2E3347"))
+        for mov in DATOS_SEMILLA:
+            fecha, cuenta, tipo, monto, mes, anio, desc = mov
+            next_row = ws.max_row + 1
+            row_data = [fecha, cuenta, tipo, monto, mes, anio, desc]
+            cf = PatternFill("solid", start_color="3B1C1C")
+            af = PatternFill("solid", start_color="1A3B2E")
+            for col, val in enumerate(row_data, 1):
+                cell = ws.cell(row=next_row, column=col, value=val)
+                cell.border = thin
+                if col == 3:
+                    cell.fill = cf if tipo == "CARGOS" else af
+        wb.save(WORK_FILE)
 
 
 def load_data() -> pd.DataFrame:
     init_excel()
     try:
-        df = pd.read_excel(EXCEL_FILE, sheet_name="Movimientos")
+        df = pd.read_excel(WORK_FILE, sheet_name="Movimientos")
         if df.empty or "Fecha" not in df.columns:
             return pd.DataFrame(columns=["Fecha","Cuenta","Tipo","Monto","Mes","Año","Descripcion"])
         df["Fecha"] = pd.to_datetime(df["Fecha"])
@@ -213,21 +296,20 @@ def load_data() -> pd.DataFrame:
 
 def save_to_excel(fecha, cuenta, tipo, monto, descripcion=""):
     init_excel()
-    wb = load_workbook(EXCEL_FILE)
+    wb = load_workbook(WORK_FILE)
     ws = wb["Movimientos"]
     next_row = ws.max_row + 1
     dt = pd.to_datetime(fecha)
     row_data = [dt.strftime("%Y-%m-%d"), cuenta, tipo, monto, dt.month, dt.year, descripcion]
     cargo_fill = PatternFill("solid", start_color="3B1C1C")
     abono_fill = PatternFill("solid", start_color="1A3B2E")
-    thin = Side(style="thin", color="2E3347")
-    border = Border(bottom=Side(style="thin", color="2E3347"))
+    thin = Border(bottom=Side(style="thin", color="2E3347"))
     for col, val in enumerate(row_data, 1):
         cell = ws.cell(row=next_row, column=col, value=val)
-        cell.border = border
+        cell.border = thin
         if col == 3:
             cell.fill = cargo_fill if tipo == "CARGOS" else abono_fill
-    wb.save(EXCEL_FILE)
+    wb.save(WORK_FILE)
 
 
 # ─── LOGIC ────────────────────────────────────────────────────────────────────
@@ -261,51 +343,23 @@ def calcular_totales(df, cuenta):
 
 
 def reset_todo():
-    """Borra todos los movimientos y cuentas personalizadas."""
-    init_excel()
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Movimientos"
-    headers = ["Fecha", "Cuenta", "Tipo", "Monto", "Mes", "Año", "Descripcion"]
-    bold = Font(bold=True, color="FFFFFF")
-    fill = PatternFill("solid", start_color="1E3A5F")
-    for col, h in enumerate(headers, 1):
-        cell = ws.cell(row=1, column=col, value=h)
-        cell.font = bold
-        cell.fill = fill
-        cell.alignment = Alignment(horizontal="center")
-    widths = [14, 14, 10, 12, 8, 8, 30]
-    for i, w in enumerate(widths, 1):
-        ws.column_dimensions[get_column_letter(i)].width = w
-    wb.save(EXCEL_FILE)
+    """Borra todos los movimientos, vuelve a cargar los datos de prueba."""
+    if os.path.exists(WORK_FILE):
+        os.remove(WORK_FILE)
     st.session_state.cuentas_custom = []
-    # Limpiar naturalezas personalizadas
     for k in list(NATURALEZA.keys()):
         if k not in ["Activos", "Pasivos", "Capital", "Ingresos", "Gastos"]:
             del NATURALEZA[k]
+    init_excel()  # recrea con datos semilla
 
 
-def eliminar_ultimo():
-    """Elimina el último movimiento registrado."""
-    df = load_data()
-    if df.empty:
-        return False
-    df = df.iloc[:-1]
-    wb = Workbook()
+def _reescribir_excel(df):
+    """Escribe un DataFrame completo en WORK_FILE."""
+    wb = _crear_workbook_vacio()
     ws = wb.active
-    ws.title = "Movimientos"
-    headers = ["Fecha", "Cuenta", "Tipo", "Monto", "Mes", "Año", "Descripcion"]
-    bold = Font(bold=True, color="FFFFFF")
-    fill = PatternFill("solid", start_color="1E3A5F")
-    for col, h in enumerate(headers, 1):
-        cell = ws.cell(row=1, column=col, value=h)
-        cell.font = bold
-        cell.fill = fill
-        cell.alignment = Alignment(horizontal="center")
-    widths = [14, 14, 10, 12, 8, 8, 30]
-    for i, w in enumerate(widths, 1):
-        ws.column_dimensions[get_column_letter(i)].width = w
     thin = Border(bottom=Side(style="thin", color="2E3347"))
+    cf = PatternFill("solid", start_color="3B1C1C")
+    af = PatternFill("solid", start_color="1A3B2E")
     for _, row in df.iterrows():
         dt = pd.to_datetime(row["Fecha"])
         row_data = [dt.strftime("%Y-%m-%d"), row["Cuenta"], row["Tipo"],
@@ -314,40 +368,24 @@ def eliminar_ultimo():
         for col, val in enumerate(row_data, 1):
             cell = ws.cell(row=next_row, column=col, value=val)
             cell.border = thin
-    wb.save(EXCEL_FILE)
+            if col == 3:
+                cell.fill = cf if row["Tipo"] == "CARGOS" else af
+    wb.save(WORK_FILE)
+
+
+def eliminar_ultimo():
+    df = load_data()
+    if df.empty:
+        return False
+    _reescribir_excel(df.iloc[:-1])
     return True
 
 
 def eliminar_por_indice(idx):
-    """Elimina el movimiento en la posición idx (0-based del df original)."""
     df = load_data()
     if df.empty or idx >= len(df):
         return False
-    df = df.drop(df.index[idx]).reset_index(drop=True)
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Movimientos"
-    headers = ["Fecha", "Cuenta", "Tipo", "Monto", "Mes", "Año", "Descripcion"]
-    bold = Font(bold=True, color="FFFFFF")
-    fill = PatternFill("solid", start_color="1E3A5F")
-    for col, h in enumerate(headers, 1):
-        cell = ws.cell(row=1, column=col, value=h)
-        cell.font = bold
-        cell.fill = fill
-        cell.alignment = Alignment(horizontal="center")
-    widths = [14, 14, 10, 12, 8, 8, 30]
-    for i, w in enumerate(widths, 1):
-        ws.column_dimensions[get_column_letter(i)].width = w
-    thin = Border(bottom=Side(style="thin", color="2E3347"))
-    for _, row in df.iterrows():
-        dt = pd.to_datetime(row["Fecha"])
-        row_data = [dt.strftime("%Y-%m-%d"), row["Cuenta"], row["Tipo"],
-                    row["Monto"], row["Mes"], row["Año"], row.get("Descripcion","")]
-        next_row = ws.max_row + 1
-        for col, val in enumerate(row_data, 1):
-            cell = ws.cell(row=next_row, column=col, value=val)
-            cell.border = thin
-    wb.save(EXCEL_FILE)
+    _reescribir_excel(df.drop(df.index[idx]).reset_index(drop=True))
     return True
 
 
@@ -1044,7 +1082,7 @@ with tab3:
         )
         tabla_resumen.index.name = "Período"
         st.dataframe(
-            tabla_resumen.style.format("${:,.2f}").background_gradient(cmap="RdYlGn", axis=None),
+            tabla_resumen.style.format("${:,.2f}"),
             use_container_width=True,
         )
 
