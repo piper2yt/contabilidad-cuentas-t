@@ -8,7 +8,7 @@ import os
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
-
+ 
 # ─── CONFIG ───────────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="ContaT · Cuentas T Contables",
@@ -16,11 +16,11 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
-
+ 
 EXCEL_FILE = "movimientos_contables.xlsx"
 CUENTAS_DEFAULT = ["Activos", "Pasivos", "Capital", "Ingresos", "Gastos"]
 MOVIMIENTOS = ["CARGOS", "ABONOS"]
-
+ 
 NATURALEZA = {
     "Activos": "deudora",
     "Gastos": "deudora",
@@ -28,25 +28,25 @@ NATURALEZA = {
     "Capital": "acreedora",
     "Ingresos": "acreedora",
 }
-
+ 
 # ─── STYLES ───────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600&display=swap');
-
+ 
 html, body, [class*="css"] {
     font-family: 'DM Sans', sans-serif;
 }
-
+ 
 h1, h2, h3 { font-family: 'DM Serif Display', serif; }
-
+ 
 .stApp { background: #0f1117; color: #e8e3d5; }
-
+ 
 section[data-testid="stSidebar"] {
     background: #161922;
     border-right: 1px solid #2a2d3a;
 }
-
+ 
 .metric-card {
     background: linear-gradient(135deg, #1a1e2e 0%, #1f2438 100%);
     border: 1px solid #2e3347;
@@ -69,7 +69,7 @@ section[data-testid="stSidebar"] {
 .positive { color: #34d399; }
 .negative { color: #f87171; }
 .neutral  { color: #93c5fd; }
-
+ 
 .cuenta-t {
     background: #161922;
     border: 1px solid #2e3347;
@@ -102,7 +102,7 @@ section[data-testid="stSidebar"] {
 .cargo-label { color: #f87171; font-size:0.7rem; letter-spacing:0.1em; text-transform:uppercase; }
 .abono-label { color: #34d399; font-size:0.7rem; letter-spacing:0.1em; text-transform:uppercase; }
 .t-amount { font-size: 0.9rem; color: #e8e3d5; padding: 2px 0; }
-
+ 
 .pill {
     display: inline-block;
     padding: 2px 10px;
@@ -113,7 +113,7 @@ section[data-testid="stSidebar"] {
 }
 .pill-cargo { background: #3b1c1c; color: #f87171; }
 .pill-abono { background: #1a3b2e; color: #34d399; }
-
+ 
 .esf-ok {
     background: linear-gradient(90deg, #1a3b2e, #1f2438);
     border: 1px solid #34d399;
@@ -130,14 +130,14 @@ section[data-testid="stSidebar"] {
     color: #f87171;
     font-weight: 600;
 }
-
+ 
 div[data-testid="stForm"] {
     background: #161922;
     border: 1px solid #2e3347;
     border-radius: 12px;
     padding: 1.4rem;
 }
-
+ 
 .stButton > button {
     background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
     color: white !important;
@@ -152,7 +152,7 @@ div[data-testid="stForm"] {
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(37,99,235,0.4) !important;
 }
-
+ 
 .stSelectbox > div > div,
 .stNumberInput > div > div > input,
 .stTextInput > div > div > input,
@@ -162,7 +162,7 @@ div[data-testid="stForm"] {
     border-radius: 8px !important;
     color: #e8e3d5 !important;
 }
-
+ 
 .tab-header {
     font-size: 0.75rem;
     letter-spacing: 0.15em;
@@ -172,77 +172,54 @@ div[data-testid="stForm"] {
     padding-bottom: 0.5rem;
     border-bottom: 1px solid #2e3347;
 }
-
+ 
 .stDataFrame { border-radius: 10px; overflow: hidden; }
 </style>
 """, unsafe_allow_html=True)
-
-
+ 
+ 
 # ─── EXCEL HELPERS ────────────────────────────────────────────────────────────
 SEED_FILE = "movimientos_contables.xlsx"   # archivo de prueba en el repo
 WORK_FILE = "movimientos_trabajo.xlsx"      # archivo de trabajo en tiempo de ejecución
-
+ 
+# ── LA MANO DERECHA S.A. DE C.V. ─────────────────────────
+# Balance General al 31 de Diciembre del Año 2
+# Activos=$1,152,388.52 | Pasivos=$334,882 | Capital=$817,506.52
+# ESF verificado: Activos = Pasivos + Capital ✓
 DATOS_SEMILLA = [
-    ("2025-01-03","Activos","CARGOS",50000,1,2025,"Efectivo aportado por el dueño"),
-    ("2025-01-03","Capital","ABONOS",50000,1,2025,"Capital inicial del dueño"),
-    ("2025-01-05","Activos","CARGOS",20000,1,2025,"Préstamo bancario recibido"),
-    ("2025-01-05","Pasivos","ABONOS",20000,1,2025,"Préstamo bancario por pagar"),
-    ("2025-01-07","Gastos", "CARGOS",15000,1,2025,"Compra de inventario inicial"),
-    ("2025-01-07","Activos","ABONOS",15000,1,2025,"Pago inventario en efectivo"),
-    ("2025-01-08","Activos","CARGOS",12000,1,2025,"Equipo de cómputo adquirido"),
-    ("2025-01-08","Activos","ABONOS",12000,1,2025,"Pago equipo en efectivo"),
-    ("2025-01-10","Activos","CARGOS", 8500,1,2025,"Cobro ventas semana 1"),
-    ("2025-01-10","Ingresos","ABONOS",8500,1,2025,"Ventas semana 1 enero"),
-    ("2025-01-17","Activos","CARGOS", 9200,1,2025,"Cobro ventas semana 2"),
-    ("2025-01-17","Ingresos","ABONOS",9200,1,2025,"Ventas semana 2 enero"),
-    ("2025-01-24","Activos","CARGOS", 7800,1,2025,"Cobro ventas semana 3"),
-    ("2025-01-24","Ingresos","ABONOS",7800,1,2025,"Ventas semana 3 enero"),
-    ("2025-01-31","Activos","CARGOS", 6500,1,2025,"Cobro ventas semana 4"),
-    ("2025-01-31","Ingresos","ABONOS",6500,1,2025,"Ventas semana 4 enero"),
-    ("2025-01-31","Gastos", "CARGOS", 5000,1,2025,"Sueldo empleado enero"),
-    ("2025-01-31","Activos","ABONOS", 5000,1,2025,"Pago sueldo enero"),
-    ("2025-01-31","Gastos", "CARGOS", 3500,1,2025,"Renta local enero"),
-    ("2025-01-31","Activos","ABONOS", 3500,1,2025,"Pago renta enero"),
-    ("2025-01-31","Gastos", "CARGOS",  800,1,2025,"Servicios luz y agua enero"),
-    ("2025-01-31","Activos","ABONOS",  800,1,2025,"Pago servicios enero"),
-    ("2025-02-03","Pasivos","CARGOS", 8000,2,2025,"Abono parcial a préstamo bancario"),
-    ("2025-02-03","Activos","ABONOS", 8000,2,2025,"Pago préstamo con efectivo"),
-    ("2025-02-05","Gastos", "CARGOS",12000,2,2025,"Compra de mercancía febrero"),
-    ("2025-02-05","Activos","ABONOS",12000,2,2025,"Pago mercancía en efectivo"),
-    ("2025-02-07","Activos","CARGOS",11000,2,2025,"Cobro ventas semana 1 feb"),
-    ("2025-02-07","Ingresos","ABONOS",11000,2,2025,"Ventas semana 1 febrero"),
-    ("2025-02-14","Activos","CARGOS",13500,2,2025,"Cobro ventas San Valentín"),
-    ("2025-02-14","Ingresos","ABONOS",13500,2,2025,"Ventas San Valentín"),
-    ("2025-02-21","Activos","CARGOS",10200,2,2025,"Cobro ventas semana 3 feb"),
-    ("2025-02-21","Ingresos","ABONOS",10200,2,2025,"Ventas semana 3 febrero"),
-    ("2025-02-28","Activos","CARGOS", 9800,2,2025,"Cobro ventas semana 4 feb"),
-    ("2025-02-28","Ingresos","ABONOS",9800,2,2025,"Ventas semana 4 febrero"),
-    ("2025-02-28","Gastos", "CARGOS", 5000,2,2025,"Sueldo empleado febrero"),
-    ("2025-02-28","Gastos", "CARGOS", 3500,2,2025,"Renta local febrero"),
-    ("2025-02-28","Gastos", "CARGOS",  950,2,2025,"Servicios luz y agua febrero"),
-    ("2025-02-28","Gastos", "CARGOS", 1200,2,2025,"Publicidad redes sociales"),
-    ("2025-02-28","Activos","ABONOS",10650,2,2025,"Pago gastos operativos febrero"),
-    ("2025-03-03","Gastos", "CARGOS",18000,3,2025,"Compra mercancía marzo a crédito"),
-    ("2025-03-03","Pasivos","ABONOS",18000,3,2025,"Deuda por mercancía marzo"),
-    ("2025-03-07","Activos","CARGOS", 9500,3,2025,"Cobro ventas semana 1 mar"),
-    ("2025-03-07","Ingresos","ABONOS",9500,3,2025,"Ventas semana 1 marzo"),
-    ("2025-03-14","Activos","CARGOS",10800,3,2025,"Cobro ventas semana 2 mar"),
-    ("2025-03-14","Ingresos","ABONOS",10800,3,2025,"Ventas semana 2 marzo"),
-    ("2025-03-15","Pasivos","CARGOS",10000,3,2025,"Abono a deuda de mercancía"),
-    ("2025-03-15","Activos","ABONOS",10000,3,2025,"Pago deuda mercancía efectivo"),
-    ("2025-03-21","Activos","CARGOS", 8900,3,2025,"Cobro ventas semana 3 mar"),
-    ("2025-03-21","Ingresos","ABONOS",8900,3,2025,"Ventas semana 3 marzo"),
-    ("2025-03-28","Activos","CARGOS", 7600,3,2025,"Cobro ventas semana 4 mar"),
-    ("2025-03-28","Ingresos","ABONOS",7600,3,2025,"Ventas semana 4 marzo"),
-    ("2025-03-31","Gastos", "CARGOS", 5500,3,2025,"Sueldo empleado marzo"),
-    ("2025-03-31","Gastos", "CARGOS", 3500,3,2025,"Renta local marzo"),
-    ("2025-03-31","Gastos", "CARGOS",  870,3,2025,"Servicios luz y agua marzo"),
-    ("2025-03-31","Gastos", "CARGOS", 1500,3,2025,"Publicidad primavera"),
-    ("2025-03-31","Gastos", "CARGOS",  600,3,2025,"Mantenimiento equipo"),
-    ("2025-03-31","Activos","ABONOS",11970,3,2025,"Pago gastos operativos marzo"),
+    # ── AÑO 1 (2024) ─────────────────────────────────────
+    ("2024-01-01","Activos","CARGOS", 291782.00, 1,2024,"Capital Social aportado — Bancos"),
+    ("2024-01-01","Capital","ABONOS", 291782.00, 1,2024,"Capital Social inicial del dueño"),
+    ("2024-01-15","Activos","CARGOS",  50000.00, 1,2024,"Adquisición Equipo de Cómputo"),
+    ("2024-01-15","Activos","ABONOS",  50000.00, 1,2024,"Pago Equipo de Cómputo en efectivo"),
+    ("2024-01-15","Activos","CARGOS",  20000.00, 1,2024,"Adquisición Mobiliario y Equipo"),
+    ("2024-01-15","Activos","ABONOS",  20000.00, 1,2024,"Pago Mobiliario y Equipo en efectivo"),
+    ("2024-06-30","Activos", "CARGOS", 420000.00,  6,2024,"Cobro ventas acumuladas año 1"),
+    ("2024-06-30","Ingresos","ABONOS", 420000.00,  6,2024,"Ventas acumuladas año 1"),
+    ("2024-12-31","Gastos", "CARGOS",  376606.00, 12,2024,"Gastos operativos año 1 (efectivo)"),
+    ("2024-12-31","Activos","ABONOS",  376606.00, 12,2024,"Pago gastos operativos año 1"),
+    ("2024-12-31","Gastos", "CARGOS",   19992.00, 12,2024,"Depreciación acumulada año 1 (Cómputo+Mob)"),
+    ("2024-12-31","Activos","ABONOS",   19992.00, 12,2024,"Depreciación — reduce valor activo fijo"),
+    ("2024-12-31","Ingresos","CARGOS", 420000.00, 12,2024,"Cierre: cancelación ingresos año 1"),
+    ("2024-12-31","Capital", "ABONOS", 420000.00, 12,2024,"Cierre: ingresos al capital año 1"),
+    ("2024-12-31","Capital", "CARGOS", 396598.00, 12,2024,"Cierre: gastos al capital año 1"),
+    ("2024-12-31","Gastos",  "ABONOS", 396598.00, 12,2024,"Cierre: cancelación gastos año 1"),
+    # ── AÑO 2 (2025) ─────────────────────────────────────
+    ("2025-06-30","Activos", "CARGOS", 950000.00,  6,2025,"Cobro ventas acumuladas año 2"),
+    ("2025-06-30","Ingresos","ABONOS", 950000.00,  6,2025,"Ventas acumuladas año 2"),
+    ("2025-12-31","Gastos", "CARGOS",   92803.48, 12,2025,"Gastos operativos año 2 (efectivo)"),
+    ("2025-12-31","Activos","ABONOS",   92803.48, 12,2025,"Pago gastos operativos año 2"),
+    ("2025-12-31","Gastos", "CARGOS",   19992.00, 12,2025,"Depreciación acumulada año 2 (Cómputo+Mob)"),
+    ("2025-12-31","Activos","ABONOS",   19992.00, 12,2025,"Depreciación — reduce valor activo fijo"),
+    ("2025-12-31","Gastos", "CARGOS",  334882.00, 12,2025,"ISR y PTU año 2 por pagar"),
+    ("2025-12-31","Pasivos","ABONOS",  334882.00, 12,2025,"Impuestos por pagar (ISR y PTU) año 2"),
+    ("2025-12-31","Ingresos","CARGOS", 950000.00, 12,2025,"Cierre: cancelación ingresos año 2"),
+    ("2025-12-31","Capital", "ABONOS", 950000.00, 12,2025,"Cierre: ingresos al capital año 2"),
+    ("2025-12-31","Capital", "CARGOS", 447677.48, 12,2025,"Cierre: gastos al capital año 2"),
+    ("2025-12-31","Gastos",  "ABONOS", 447677.48, 12,2025,"Cierre: cancelación gastos año 2"),
 ]
-
-
+ 
+ 
 def _crear_workbook_vacio():
     wb = Workbook()
     ws = wb.active
@@ -259,8 +236,8 @@ def _crear_workbook_vacio():
     for i, w in enumerate(widths, 1):
         ws.column_dimensions[get_column_letter(i)].width = w
     return wb
-
-
+ 
+ 
 def init_excel():
     """Crea el archivo de trabajo; si no existe, lo inicializa con datos de prueba."""
     if not os.path.exists(WORK_FILE):
@@ -279,8 +256,8 @@ def init_excel():
                 if col == 3:
                     cell.fill = cf if tipo == "CARGOS" else af
         wb.save(WORK_FILE)
-
-
+ 
+ 
 def load_data() -> pd.DataFrame:
     init_excel()
     try:
@@ -292,8 +269,8 @@ def load_data() -> pd.DataFrame:
         return df
     except Exception:
         return pd.DataFrame(columns=["Fecha","Cuenta","Tipo","Monto","Mes","Año","Descripcion"])
-
-
+ 
+ 
 def save_to_excel(fecha, cuenta, tipo, monto, descripcion=""):
     init_excel()
     wb = load_workbook(WORK_FILE)
@@ -310,19 +287,19 @@ def save_to_excel(fecha, cuenta, tipo, monto, descripcion=""):
         if col == 3:
             cell.fill = cargo_fill if tipo == "CARGOS" else abono_fill
     wb.save(WORK_FILE)
-
-
+ 
+ 
 # ─── LOGIC ────────────────────────────────────────────────────────────────────
 def get_cuentas_list():
     if "cuentas_custom" not in st.session_state:
         st.session_state.cuentas_custom = []
     return CUENTAS_DEFAULT + st.session_state.cuentas_custom
-
-
+ 
+ 
 def get_naturaleza(cuenta):
     return NATURALEZA.get(cuenta, "deudora")
-
-
+ 
+ 
 def calcular_saldo(df: pd.DataFrame, cuenta: str) -> float:
     sub = df[df["Cuenta"] == cuenta]
     nat = get_naturaleza(cuenta)
@@ -333,15 +310,15 @@ def calcular_saldo(df: pd.DataFrame, cuenta: str) -> float:
         else:
             saldo += row["Monto"] if row["Tipo"] == "ABONOS" else -row["Monto"]
     return saldo
-
-
+ 
+ 
 def calcular_totales(df, cuenta):
     sub = df[df["Cuenta"] == cuenta]
     cargos = sub[sub["Tipo"] == "CARGOS"]["Monto"].sum()
     abonos = sub[sub["Tipo"] == "ABONOS"]["Monto"].sum()
     return cargos, abonos
-
-
+ 
+ 
 def reset_todo():
     """Borra todos los movimientos, vuelve a cargar los datos de prueba."""
     if os.path.exists(WORK_FILE):
@@ -351,8 +328,8 @@ def reset_todo():
         if k not in ["Activos", "Pasivos", "Capital", "Ingresos", "Gastos"]:
             del NATURALEZA[k]
     init_excel()  # recrea con datos semilla
-
-
+ 
+ 
 def _reescribir_excel(df):
     """Escribe un DataFrame completo en WORK_FILE."""
     wb = _crear_workbook_vacio()
@@ -371,40 +348,40 @@ def _reescribir_excel(df):
             if col == 3:
                 cell.fill = cf if row["Tipo"] == "CARGOS" else af
     wb.save(WORK_FILE)
-
-
+ 
+ 
 def eliminar_ultimo():
     df = load_data()
     if df.empty:
         return False
     _reescribir_excel(df.iloc[:-1])
     return True
-
-
+ 
+ 
 def eliminar_por_indice(idx):
     df = load_data()
     if df.empty or idx >= len(df):
         return False
     _reescribir_excel(df.drop(df.index[idx]).reset_index(drop=True))
     return True
-
-
+ 
+ 
 # ─── COMPONENTS ───────────────────────────────────────────────────────────────
 def render_cuenta_t(cuenta, df):
     cargos_val, abonos_val = calcular_totales(df, cuenta)
     saldo = calcular_saldo(df, cuenta)
     nat = get_naturaleza(cuenta)
     color_saldo = "positive" if saldo >= 0 else "negative"
-
+ 
     sub = df[df["Cuenta"] == cuenta]
     cargos_items = sub[sub["Tipo"] == "CARGOS"]["Monto"].tolist()
     abonos_items = sub[sub["Tipo"] == "ABONOS"]["Monto"].tolist()
-
+ 
     cargos_html = "".join(f'<div class="t-amount">$ {v:,.2f}</div>' for v in cargos_items) or '<div style="color:#4b5563;font-size:0.8rem;">—</div>'
     abonos_html = "".join(f'<div class="t-amount">$ {v:,.2f}</div>' for v in abonos_items) or '<div style="color:#4b5563;font-size:0.8rem;">—</div>'
-
+ 
     naturaleza_label = "Nat. Deudora" if nat == "deudora" else "Nat. Acreedora"
-
+ 
     st.markdown(f"""
     <div class="cuenta-t">
       <div class="cuenta-t-header">
@@ -434,13 +411,13 @@ def render_cuenta_t(cuenta, df):
       </div>
     </div>
     """, unsafe_allow_html=True)
-
-
+ 
+ 
 # ─── SIDEBAR ──────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown("## 📒 ContaT")
     st.markdown('<div style="font-size:0.75rem;color:#6b7280;margin-bottom:1.5rem;">Sistema Contable · Cuentas T</div>', unsafe_allow_html=True)
-
+ 
     st.markdown("### Nuevo Movimiento")
     with st.form("form_movimiento", clear_on_submit=True):
         cuentas_disponibles = get_cuentas_list()
@@ -450,7 +427,7 @@ with st.sidebar:
         fecha_sel = st.date_input("Fecha", value=date.today())
         desc_sel = st.text_input("Descripción (opcional)")
         submitted = st.form_submit_button("➕ Registrar Movimiento", use_container_width=True)
-
+ 
     if submitted:
         try:
             monto_val = float(str(monto_sel).replace(",", ".").strip())
@@ -462,10 +439,10 @@ with st.sidebar:
             st.rerun()
         else:
             st.error("Ingresa un monto válido mayor a 0 (ej: 1500 o 1500.50)")
-
+ 
     st.divider()
     st.markdown("### Agregar Cuenta")
-
+ 
     # Catálogo de cuentas comunes con su naturaleza predefinida
     CATALOGO = {
         # ── ACTIVOS (deudora) ──
@@ -525,15 +502,15 @@ with st.sidebar:
         "Papelería": "deudora",
         "Combustibles": "deudora",
     }
-
+ 
     # Filtrar las que ya están agregadas
     ya_agregadas = set(get_cuentas_list())
     catalogo_disponible = {k: v for k, v in CATALOGO.items() if k not in ya_agregadas}
-
+ 
     # Selectbox del catálogo + opción personalizada
     opciones_catalogo = ["— Selecciona una cuenta —"] + sorted(catalogo_disponible.keys()) + ["✏️ Escribir nombre personalizado"]
     cuenta_elegida = st.selectbox("Cuenta a agregar", opciones_catalogo, key="sel_nueva_cuenta")
-
+ 
     if cuenta_elegida == "✏️ Escribir nombre personalizado":
         nombre_custom = st.text_input("Nombre personalizado", placeholder="Ej: Inversiones temporales")
         nat_custom = st.selectbox("Naturaleza", ["deudora", "acreedora"], key="nat_custom")
@@ -548,7 +525,7 @@ with st.sidebar:
                 st.error("Escribe un nombre válido")
             else:
                 st.warning("Esa cuenta ya existe")
-
+ 
     elif cuenta_elegida != "— Selecciona una cuenta —":
         nat_det = CATALOGO[cuenta_elegida]
         nat_color = "#93c5fd" if nat_det == "deudora" else "#34d399"
@@ -568,7 +545,7 @@ with st.sidebar:
             NATURALEZA[cuenta_elegida] = nat_det
             st.success(f"✓ '{cuenta_elegida}' añadida ({nat_det})")
             st.rerun()
-
+ 
     if st.session_state.get("cuentas_custom"):
         st.markdown("**Cuentas personalizadas:**")
         for i, c in enumerate(st.session_state.cuentas_custom):
@@ -581,13 +558,13 @@ with st.sidebar:
                     if c in NATURALEZA:
                         del NATURALEZA[c]
                     st.rerun()
-
+ 
     st.divider()
     st.markdown("### ⚠️ Zona de Reset")
-
+ 
     if st.button("↩ Deshacer último movimiento", use_container_width=True):
         st.session_state["confirm_undo"] = True
-
+ 
     if st.session_state.get("confirm_undo"):
         st.warning("¿Eliminar el último movimiento registrado?")
         col_y, col_n = st.columns(2)
@@ -604,12 +581,12 @@ with st.sidebar:
             if st.button("✗ No", key="undo_no", use_container_width=True):
                 st.session_state["confirm_undo"] = False
                 st.rerun()
-
+ 
     st.markdown("")
-
+ 
     if st.button("🗑 Resetear TODO a cero", use_container_width=True):
         st.session_state["confirm_reset"] = True
-
+ 
     if st.session_state.get("confirm_reset"):
         st.error("¿Borrar TODOS los movimientos y cuentas personalizadas?")
         col_y2, col_n2 = st.columns(2)
@@ -623,22 +600,22 @@ with st.sidebar:
             if st.button("✗ Cancelar", key="reset_no", use_container_width=True):
                 st.session_state["confirm_reset"] = False
                 st.rerun()
-
-
+ 
+ 
 # ─── MAIN ─────────────────────────────────────────────────────────────────────
 df_all = load_data()
-
+ 
 st.markdown("# ContaT")
 st.markdown('<div class="tab-header">Sistema de Cuentas T · Contabilidad Financiera</div>', unsafe_allow_html=True)
-
+ 
 tab1, tab2, tab3, tab4 = st.tabs(["📊 Dashboard", "🧾 Cuentas T", "📈 Análisis", "📋 Historial"])
-
+ 
 # ══════════════════════════════════════════════════════════════════════
 # TAB 1 · DASHBOARD
 # ══════════════════════════════════════════════════════════════════════
 with tab1:
     cuentas_list = get_cuentas_list()
-
+ 
     # Métricas principales
     cols = st.columns(5)
     labels = ["Activos", "Pasivos", "Capital", "Ingresos", "Gastos"]
@@ -652,15 +629,15 @@ with tab1:
               <div class="value {clr}">$ {saldo:,.0f}</div>
             </div>
             """, unsafe_allow_html=True)
-
+ 
     st.markdown("---")
-
+ 
     # ESF
     activos = calcular_saldo(df_all, "Activos")
     pasivos = calcular_saldo(df_all, "Pasivos")
     capital = calcular_saldo(df_all, "Capital")
     cuadrado = abs(activos - (pasivos + capital)) < 0.01
-
+ 
     col_esf, col_res = st.columns([1, 1])
     with col_esf:
         if cuadrado:
@@ -680,7 +657,7 @@ with tab1:
                 Activos: $ {activos:,.2f} ≠ Pasivos + Capital: $ {pasivos + capital:,.2f}
               </span>
             </div>""", unsafe_allow_html=True)
-
+ 
     with col_res:
         ingresos = calcular_saldo(df_all, "Ingresos")
         gastos = calcular_saldo(df_all, "Gastos")
@@ -695,7 +672,7 @@ with tab1:
             Ingresos $ {ingresos:,.2f} − Gastos $ {gastos:,.2f}
           </div>
         </div>""", unsafe_allow_html=True)
-
+ 
     # Mini gráfica de saldos
     if not df_all.empty:
         saldos_data = {c: calcular_saldo(df_all, c) for c in cuentas_list}
@@ -718,12 +695,12 @@ with tab1:
             yaxis=dict(gridcolor="#2e3347"),
         )
         st.plotly_chart(fig_bar, use_container_width=True)
-
+ 
     # ── SECCIÓN EDUCATIVA ──────────────────────────────────────────────
     st.markdown("---")
     st.markdown("## 📚 Guía de Conceptos Contables")
     st.markdown('<div style="font-size:0.8rem;color:#6b7280;margin-bottom:1.5rem;">Referencia rápida para entender los elementos del sistema contable</div>', unsafe_allow_html=True)
-
+ 
     # Tarjetas de los 5 tipos de cuenta
     st.markdown("### 🗂 Tipos de Cuenta")
     info_cuentas = [
@@ -778,11 +755,11 @@ with tab1:
             "regla": "Aumentan con CARGOS · Disminuyen con ABONOS",
         },
     ]
-
+ 
     col_a, col_b, col_c = st.columns(3)
     col_d, col_e, _ = st.columns(3)
     columnas_edu = [col_a, col_b, col_c, col_d, col_e]
-
+ 
     for col, info in zip(columnas_edu, info_cuentas):
         nat_color = "#93c5fd" if info["naturaleza"] == "deudora" else "#34d399"
         nat_bg    = "#1e3a5f" if info["naturaleza"] == "deudora" else "#1a3b2e"
@@ -823,11 +800,11 @@ with tab1:
                 </div>
             </div>
             """, unsafe_allow_html=True)
-
+ 
     # Naturalezas: Deudora vs Acreedora
     st.markdown("### ⚖️ Naturaleza de las Cuentas")
     col_deu, col_acre = st.columns(2)
-
+ 
     with col_deu:
         st.markdown("""
         <div style="
@@ -856,7 +833,7 @@ with tab1:
             </div>
         </div>
         """, unsafe_allow_html=True)
-
+ 
     with col_acre:
         st.markdown("""
         <div style="
@@ -886,7 +863,7 @@ with tab1:
             </div>
         </div>
         """, unsafe_allow_html=True)
-
+ 
     # Diagrama visual de la Cuenta T
     st.markdown("### 🔠 ¿Cómo funciona la Cuenta T?")
     st.markdown("""
@@ -943,8 +920,8 @@ with tab1:
         </div>
     </div>
     """, unsafe_allow_html=True)
-
-
+ 
+ 
 # ══════════════════════════════════════════════════════════════════════
 # TAB 2 · CUENTAS T
 # ══════════════════════════════════════════════════════════════════════
@@ -957,8 +934,8 @@ with tab2:
         for col, cuenta in zip(cols, row):
             with col:
                 render_cuenta_t(cuenta, df_all)
-
-
+ 
+ 
 # ══════════════════════════════════════════════════════════════════════
 # TAB 3 · ANÁLISIS
 # ══════════════════════════════════════════════════════════════════════
@@ -975,24 +952,24 @@ with tab3:
                 get_cuentas_list(),
                 default=["Ingresos", "Gastos", "Activos"],
             )
-
+ 
         df_analysis = df_all.copy()
-
+ 
         MESES = {1:"Ene",2:"Feb",3:"Mar",4:"Abr",5:"May",6:"Jun",
                  7:"Jul",8:"Ago",9:"Sep",10:"Oct",11:"Nov",12:"Dic"}
-
+ 
         if periodo == "Mes":
             df_analysis["Periodo"] = df_analysis["Mes"].map(MESES) + " " + df_analysis["Año"].astype(str)
             df_analysis["sort_key"] = df_analysis["Año"] * 100 + df_analysis["Mes"]
         else:
             df_analysis["Periodo"] = df_analysis["Año"].astype(str)
             df_analysis["sort_key"] = df_analysis["Año"]
-
+ 
         if cuentas_filtro:
             df_filtered = df_analysis[df_analysis["Cuenta"].isin(cuentas_filtro)]
         else:
             df_filtered = df_analysis.copy()
-
+ 
         # Calcular saldo neto por período y cuenta según naturaleza
         def saldo_neto(row):
             nat = get_naturaleza(row["Cuenta"])
@@ -1000,13 +977,13 @@ with tab3:
                 return row["Monto"] if row["Tipo"] == "CARGOS" else -row["Monto"]
             else:
                 return row["Monto"] if row["Tipo"] == "ABONOS" else -row["Monto"]
-
+ 
         df_filtered = df_filtered.copy()
         df_filtered["Saldo"] = df_filtered.apply(saldo_neto, axis=1)
-
+ 
         pivot = df_filtered.groupby(["sort_key", "Periodo", "Cuenta"])["Saldo"].sum().reset_index()
         pivot = pivot.sort_values("sort_key")
-
+ 
         # Gráfico de líneas por cuenta
         fig_line = px.line(
             pivot,
@@ -1028,9 +1005,9 @@ with tab3:
             height=350,
         )
         st.plotly_chart(fig_line, use_container_width=True)
-
+ 
         col_a, col_b = st.columns(2)
-
+ 
         with col_a:
             # Barras apiladas Cargos vs Abonos
             df_tipo = df_filtered.groupby(["Periodo", "sort_key", "Tipo"])["Monto"].sum().reset_index().sort_values("sort_key")
@@ -1054,7 +1031,7 @@ with tab3:
                 height=300,
             )
             st.plotly_chart(fig_stack, use_container_width=True)
-
+ 
         with col_b:
             # Pie distribución por cuenta
             pie_data = df_filtered.groupby("Cuenta")["Monto"].sum().reset_index()
@@ -1074,7 +1051,7 @@ with tab3:
                 height=300,
             )
             st.plotly_chart(fig_pie, use_container_width=True)
-
+ 
         # Tabla resumen
         st.markdown("#### Resumen por Período")
         tabla_resumen = pivot.pivot_table(
@@ -1085,7 +1062,7 @@ with tab3:
             tabla_resumen.style.format("${:,.2f}"),
             use_container_width=True,
         )
-
+ 
         # Insights
         st.markdown("#### 🔍 Insights")
         if "Ingresos" in df_all["Cuenta"].values and "Gastos" in df_all["Cuenta"].values:
@@ -1100,8 +1077,8 @@ with tab3:
                 if not bottom.empty:
                     mes_gasto = bottom.idxmax()
                     st.warning(f"📉 El período con más gastos fue **{mes_gasto}** con **${bottom.max():,.2f}**")
-
-
+ 
+ 
 # ══════════════════════════════════════════════════════════════════════
 # TAB 4 · HISTORIAL
 # ══════════════════════════════════════════════════════════════════════
@@ -1118,7 +1095,7 @@ with tab4:
         with col_f3:
             años = sorted(df_all["Año"].dropna().unique().astype(int).tolist(), reverse=True)
             filtro_año = st.selectbox("Año", ["Todos"] + [str(a) for a in años])
-
+ 
         df_hist = df_all.copy()
         if filtro_cuenta != "Todas":
             df_hist = df_hist[df_hist["Cuenta"] == filtro_cuenta]
@@ -1126,22 +1103,22 @@ with tab4:
             df_hist = df_hist[df_hist["Tipo"] == filtro_tipo]
         if filtro_año != "Todos":
             df_hist = df_hist[df_hist["Año"] == int(filtro_año)]
-
+ 
         df_hist = df_hist.sort_values("Fecha", ascending=False)
-
+ 
         def color_tipo(val):
             if val == "CARGOS":
                 return "color: #f87171"
             elif val == "ABONOS":
                 return "color: #34d399"
             return ""
-
+ 
         # Tabla con botón de eliminar por fila
         st.markdown("##### Movimientos registrados")
         col_h = st.columns([2, 2, 2, 2, 3, 1])
         for h, label in zip(col_h, ["Fecha", "Cuenta", "Tipo", "Monto", "Descripción", "Eliminar"]):
             h.markdown(f"**{label}**")
-
+ 
         df_hist_indexed = df_hist.reset_index()  # guarda índice original en columna 'index'
         for _, row in df_hist_indexed.iterrows():
             c1, c2, c3, c4, c5, c6 = st.columns([2, 2, 2, 2, 3, 1])
@@ -1153,7 +1130,7 @@ with tab4:
             c5.write(row.get("Descripcion", "") or "—")
             if c6.button("✕", key=f"del_row_{row['index']}"):
                 st.session_state["confirm_del_idx"] = int(row["index"])
-
+ 
         if "confirm_del_idx" in st.session_state and st.session_state["confirm_del_idx"] is not None:
             idx_to_del = st.session_state["confirm_del_idx"]
             st.warning(f"¿Eliminar el movimiento seleccionado (fila #{idx_to_del + 1})?")
@@ -1167,9 +1144,9 @@ with tab4:
                 if st.button("✗ Cancelar", key="cancel_del_btn"):
                     st.session_state["confirm_del_idx"] = None
                     st.rerun()
-
+ 
         st.markdown(f"**{len(df_hist)} movimientos** · Total cargos: **${df_hist[df_hist['Tipo']=='CARGOS']['Monto'].sum():,.2f}** · Total abonos: **${df_hist[df_hist['Tipo']=='ABONOS']['Monto'].sum():,.2f}**")
-
+ 
         col_dl1, col_dl2 = st.columns([1, 4])
         with col_dl1:
             csv_data = df_hist.to_csv(index=False).encode("utf-8")
@@ -1180,3 +1157,5 @@ with tab4:
                 mime="text/csv",
                 use_container_width=True,
             )
+
+ 
